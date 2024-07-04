@@ -3,17 +3,16 @@ library(tidyverse); library(broom); library(survival); library(knitr); library(u
 # IMPORT UKBB DATA with ukbtools in df
 df <- # select variables of interest
 df %>% select(eid, starts_with("age_when"), starts_with("sex_f31"), starts_with("body_mass_index_bmi_f21001"),
-                   starts_with("date_of_attending_"), starts_with("waist_circumference"), starts_with("hip_circumference"),
-                   starts_with("date_lost_to_followup_f191"), ethnic_background_f21000_0_0, 
-                   uk_biobank_assessment_centre_f54_0_0, 
-                   starts_with("noncancer_illness_code_selfreported_f20002_0"),
-                   starts_with("cancer_code_selfreported_f20001_0_"),
-                   starts_with("type_of_cancer_icd10_f40006_"),
-                   starts_with("date_of_cancer_diagnosis_f40005_"),
-                   starts_with("interpolated_age_of_participant_when_noncancer_illness_first_diagnosed_f20009_0_"),
-                   starts_with("date_of_death_f40000_0_0"),
-                   starts_with("underlying_primary_cause_of_death_icd10_f40001_0"),
-                   starts_with("contributory_secondary_ca_f40002_0_"))
+              starts_with("date_of_attending_"), starts_with("waist_circumference"), starts_with("hip_circumference"),
+              starts_with("date_lost_to_followup_f191"), 
+              starts_with("noncancer_illness_code_selfreported_f20002_0"), starts_with("glycated_haemoglobin_hba1c_f30750"),
+              starts_with("glucose_f30740"), starts_with("albumin_f30600"), starts_with("total_bilirubin_f30840"),
+              starts_with("contributory_secondary_ca_f40002_0_"), starts_with("treatmentmedication_code_f20003_0"),
+              starts_with("platelet_count_f30080"), starts_with("alanine_aminotransferase_f30620"), starts_with("aspartate_aminotransferase_f30650"), 
+              starts_with("alkaline_phosphatase_f30610"), starts_with("gamma_glutamyltransferase_f30730"),
+              starts_with("triglycerides_f30870"), starts_with("cholesterol_f30690"), 
+              starts_with("hdl_cholesterol_f30760"), starts_with("ldl_direct_f30780"), starts_with("creatinine_f30700"), 
+              starts_with("creactive_protein_f30710"))
 
 # COMORBIDITIES self reported ####
 df.comorb <- 
@@ -168,6 +167,7 @@ df <- df %>% mutate(across(starts_with("albumin_f30600"), ~(.x/10)))
 summary(df$albumin_f30600_0_0); summary(df$albumin_f30600_1_0)
 table(df$alcohol.high <- case_when(df$alcohol_g_day>30 & df$sex_f31_0_0=="Male" ~1, df$alcohol_g_day>20 & df$sex_f31_0_0=="Female" ~1, TRUE~0), useNA = "ifany")
 table(df$alcohol.high2 <- case_when(df$alcohol_g_day>60 & df$sex_f31_0_0=="Male" ~1, df$alcohol_g_day>50 & df$sex_f31_0_0=="Female" ~1, TRUE~0), useNA = "ifany")
+table(df$alcohol_cat <- case_when(df$alcohol.high2==1~2, df$alcohol.high==1~1, TRUE~0), useNA = "ifany")
 table(df$bmi_cat <- factor(case_when(df$body_mass_index_bmi_f21001_0_0>=30~2, df$body_mass_index_bmi_f21001_0_0>=25~1, is.na(df$body_mass_index_bmi_f21001_0_0)~NA_real_, TRUE~0), levels = 0:2, labels = c("<25", "25-30", "≥30")), useNA = "ifany")
 summary(df$pdff)
 table(df$pdff.high, useNA = "ifany")
@@ -382,6 +382,9 @@ table <-
     "BMI, kg/m2"=c(tab.mean(df$body_mass_index_bmi_f21001_0_0, df$cluster, all = TRUE, p.value = TRUE)),
     "BMI cat"=c(tab.mcountpct(df$bmi_cat, df$cluster, first.cat=TRUE, all = TRUE, p.value = TRUE)),
     "Waist circumference, cm"=c(tab.mean(df$waist_circumference_f48_0_0, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol g/day"= c(tab.median(df$alcohol_g_day, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, CAT"= c(tab.mcountpct(df$alcohol_cat, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, high"= c(tab.countpct(df$alcohol.high, df$cluster, all = TRUE, p.value = TRUE)),
     "Alcohol, high2"= c(tab.countpct(df$alcohol.high2, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff"=c(tab.median(df$pdff, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff NA"=c(tab.countpct(is.na(df$pdff), df$cluster, all = TRUE, p.value = TRUE)),
@@ -425,6 +428,9 @@ table.globalp <-
     "BMI, kg/m2"=summary(aov(df$body_mass_index_bmi_f21001_0_0 ~ df$cluster))[[1]][[1,5]],
     "BMI cat"=chisq.test(df$bmi_cat, df$cluster)$p.value,
     "Waist circumference, cm"=summary(aov(df$waist_circumference_f48_0_0 ~ df$cluster))[[1]][[1,5]],
+    "Alcohol g/d"=kruskal.test(df$alcohol_g_day, df$cluster)$p.value,
+    "Alcohol CAT"= chisq.test(df$alcohol_cat, df$cluster)$p.value,
+    "Alcohol, high"= chisq.test(df$alcohol.high, df$cluster)$p.value,
     "Alcohol, high2"= chisq.test(df$alcohol.high2, df$cluster)$p.value,
     "pdff"=summary(aov(df$pdff ~ df$cluster))[[1]][[1,5]],
     "pdff NA"=chisq.test(is.na(df$pdff), df$cluster)$p.value,
@@ -474,6 +480,9 @@ table3 <-
     "BMI, kg/m2"=c(tab.mean(df$body_mass_index_bmi_f21001_0_0, df$cluster, all = TRUE, p.value = TRUE)),
     "BMI cat"=c(tab.mcountpct(df$bmi_cat, df$cluster, first.cat=TRUE, all = TRUE, p.value = TRUE)),
     "Waist circumference, cm"=c(tab.mean(df$waist_circumference_f48_0_0, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol g/day"= c(tab.median(df$alcohol_g_day, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, CAT"= c(tab.mcountpct(df$alcohol_cat, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, high"= c(tab.countpct(df$alcohol.high, df$cluster, all = TRUE, p.value = TRUE)),
     "Alcohol, high2"= c(tab.countpct(df$alcohol.high2, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff"=c(tab.median(df$pdff, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff NA"=c(tab.countpct(is.na(df$pdff), df$cluster, all = TRUE, p.value = TRUE)),
@@ -518,6 +527,9 @@ table.p <-
     "BMI, kg/m2"=c(p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
     "BMI cat"=c(p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=3], df$cluster[df$cluster!=3])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=2], df$cluster[df$cluster!=2])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=1], df$cluster[df$cluster!=1])$p.value, method = "bonferroni", n=3))),
     "Waist circumference, cm"=c(p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
+    "Alcohol g/day"= c(p(pairwise.wilcox.test(df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
+    "Alcohol cat"=c(p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=3], df$cluster[df$cluster!=3])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=2], df$cluster[df$cluster!=2])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=1], df$cluster[df$cluster!=1])$p.value, method = "bonferroni", n=3))),
+    "Alcohol high"=c(p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[3,3])),
     "Alcohol high2"=c(p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high2), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high2), control = "bonferroni")[3,3])),
     "pdff"=c(p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
     "pdff NA"=c(p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[3,3])),
@@ -588,7 +600,7 @@ bind_rows(
   pivot_wider(names_from = term, values_from = hr) %>% 
   write.table(quote = FALSE, sep = ";")
 
-(cluster.crude <- coxph(Surv(ttcld.deceased, cld.deceased)~as.factor(cluster), data = df, subset= ttcld.deceased>0)) %>% tidy(exponentiate=TRUE, conf.int=TRUE) %>% 
+(cluster.crude <- coxph(Surv(ttcld.deceased, cld.deceased)~as.factor(cluster), data = df)) %>% tidy(exponentiate=TRUE, conf.int=TRUE) %>% 
   bind_rows(coxph(Surv(ttcld.deceased, cld.deceased)~as.factor(cluster)+age_when_attended_assessment_centre_f21003_0_0, data = df) %>% tidy(exponentiate=TRUE, conf.int=TRUE) %>% slice(1:2)) %>% 
   bind_rows(coxph(Surv(ttcld.deceased, cld.deceased)~as.factor(cluster)+body_mass_index_bmi_f21001_0_0, data = df) %>% tidy(exponentiate=TRUE, conf.int=TRUE) %>% slice(1:2)) %>% 
   bind_rows(coxph(Surv(ttcld.deceased, cld.deceased)~as.factor(cluster)+glycated_haemoglobin_hba1c_f30750_0_0, data = df) %>% tidy(exponentiate=TRUE, conf.int=TRUE) %>% slice(1:2)) %>%
@@ -613,22 +625,22 @@ bind_rows(
 
 loglik <- 
 rbind(c(as.numeric(anova(cluster.crude)$loglik[2]), NA),
-as.numeric(anova(cluster.crude, update(age.crude, subset=ttcld.deceased>0))[2, c("loglik", "Pr(>|Chi|)")]),
-as.numeric(anova(cluster.crude, update(bmi.crude, subset=ttcld.deceased>0))[2, c("loglik", "Pr(>|Chi|)")]),
-as.numeric(anova(cluster.crude, update(hba1c.crude, subset=ttcld.deceased>0))[2, c("loglik", "Pr(>|Chi|)")]),
-as.numeric(anova(cluster.crude, update(alt.crude, subset=ttcld.deceased>0))[2, c("loglik", "Pr(>|Chi|)")]),
-as.numeric(anova(cluster.crude, update(trigly.crude, subset=ttcld.deceased>0))[2, c("loglik", "Pr(>|Chi|)")]),
-as.numeric(anova(cluster.crude, update(ldl.crude, subset=ttcld.deceased>0))[2, c("loglik", "Pr(>|Chi|)")])) %>% 
+as.numeric(anova(cluster.crude, age.crude)[2, c("loglik", "Pr(>|Chi|)")]),
+as.numeric(anova(cluster.crude, bmi.crude)[2, c("loglik", "Pr(>|Chi|)")]),
+as.numeric(anova(cluster.crude, hba1c.crude)[2, c("loglik", "Pr(>|Chi|)")]),
+as.numeric(anova(cluster.crude, alt.crude)[2, c("loglik", "Pr(>|Chi|)")]),
+as.numeric(anova(cluster.crude, trigly.crude)[2, c("loglik", "Pr(>|Chi|)")]),
+as.numeric(anova(cluster.crude, ldl.crude)[2, c("loglik", "Pr(>|Chi|)")])) %>% 
   as_tibble() %>% mutate(loglik=sprintf("%s, %s", round(V1, 0), round(V2, 3))) %>% select(loglik)
   
 aic <- 
 c(round(AIC(cluster.crude), 0),
-round(AIC(update(age.crude, subset=ttcld.deceased>0)), 0),
-round(AIC(update(bmi.crude, subset=ttcld.deceased>0)), 0),
-round(AIC(update(hba1c.crude, subset=ttcld.deceased>0)), 0),
-round(AIC(update(alt.crude, subset=ttcld.deceased>0)), 0),
-round(AIC(update(trigly.crude, subset=ttcld.deceased>0)), 0),
-round(AIC(update(ldl.crude, subset=ttcld.deceased>0)), 0))
+round(AIC(age.crude), 0),
+round(AIC(bmi.crude), 0),
+round(AIC(hba1c.crude), 0),
+round(AIC(alt.crude), 0),
+round(AIC(trigly.crude), 0),
+round(AIC(ldl.crude), 0))
 
 # CUMULATIVE INCIDENCE CURVE CLD - FIGURE 5
 df$cld.deceased.cr <- case_when(df$ttexcl.chrlivdis.fu<=df$ttcld.inc ~ 2, 
@@ -715,6 +727,9 @@ table <-
     "BMI, kg/m2"=c(tab.mean(df$body_mass_index_bmi_f21001_0_0, df$cluster, all = TRUE, p.value = TRUE)),
     "BMI cat"=c(tab.mcountpct(df$bmi_cat, df$cluster, first.cat=TRUE, all = TRUE, p.value = TRUE)),
     "Waist circumference, cm"=c(tab.mean(df$waist_circumference_f48_0_0, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol g/day"= c(tab.median(df$alcohol_g_day, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, CAT"= c(tab.mcountpct(df$alcohol_cat, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, high"= c(tab.countpct(df$alcohol.high, df$cluster, all = TRUE, p.value = TRUE)),
     "Alcohol, high2"= c(tab.countpct(df$alcohol.high2, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff"=c(tab.median(df$pdff, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff NA"=c(tab.countpct(is.na(df$pdff), df$cluster, all = TRUE, p.value = TRUE)),
@@ -756,6 +771,9 @@ table.globalp <-
     "BMI, kg/m2"=summary(aov(df$body_mass_index_bmi_f21001_0_0 ~ df$cluster))[[1]][[1,5]],
     "BMI cat"=chisq.test(df$bmi_cat, df$cluster)$p.value,
     "Waist circumference, cm"=summary(aov(df$waist_circumference_f48_0_0 ~ df$cluster))[[1]][[1,5]],
+    "Alcohol g/d"=kruskal.test(df$alcohol_g_day, df$cluster)$p.value,
+    "Alcohol CAT"= chisq.test(df$alcohol_cat, df$cluster)$p.value,
+    "Alcohol, high"= chisq.test(df$alcohol.high, df$cluster)$p.value,
     "Alcohol, high2"= chisq.test(df$alcohol.high2, df$cluster)$p.value,
     "pdff"=summary(aov(df$pdff ~ df$cluster))[[1]][[1,5]],
     "pdff NA"=chisq.test(is.na(df$pdff), df$cluster)$p.value,
@@ -805,6 +823,9 @@ table3 <-
     "BMI, kg/m2"=c(tab.mean(df$body_mass_index_bmi_f21001_0_0, df$cluster, all = TRUE, p.value = TRUE)),
     "BMI cat"=c(tab.mcountpct(df$bmi_cat, df$cluster, first.cat=TRUE, all = TRUE, p.value = TRUE)),
     "Waist circumference, cm"=c(tab.mean(df$waist_circumference_f48_0_0, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol g/day"= c(tab.median(df$alcohol_g_day, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, CAT"= c(tab.mcountpct(df$alcohol_cat, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, high"= c(tab.countpct(df$alcohol.high, df$cluster, all = TRUE, p.value = TRUE)),
     "Alcohol, high2"= c(tab.countpct(df$alcohol.high2, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff"=c(tab.median(df$pdff, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff NA"=c(tab.countpct(is.na(df$pdff), df$cluster, all = TRUE, p.value = TRUE)),
@@ -848,6 +869,9 @@ table.p <-
     "BMI, kg/m2"=c(p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
     "BMI cat"=c(p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=3], df$cluster[df$cluster!=3])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=2], df$cluster[df$cluster!=2])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=1], df$cluster[df$cluster!=1])$p.value, method = "bonferroni", n=3))),
     "Waist circumference, cm"=c(p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
+    "Alcohol g/day"= c(p(pairwise.wilcox.test(df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
+    "Alcohol cat"=c(p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=3], df$cluster[df$cluster!=3])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=2], df$cluster[df$cluster!=2])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=1], df$cluster[df$cluster!=1])$p.value, method = "bonferroni", n=3))),
+    "Alcohol high"=c(p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[3,3])),
     "Alcohol high2"=c(p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high2), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high2), control = "bonferroni")[3,3])),
     "pdff"=c(p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
     "pdff NA"=c(p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[3,3])),
@@ -956,7 +980,6 @@ aic <-
     round(AIC(trigly.crude), 0),
     round(AIC(ldl.crude), 0))
 
-
 # CUMULATIVE INCIDENCE CURVE CVD  - FIGURE 5
 summary(df$ttcvd.deceased) 
 table(df$cvd.deceased.cr <- case_when(df$cvd.deceased==1~1, df$deceased==1~2, TRUE ~ 0), useNA = "ifany")
@@ -1040,6 +1063,9 @@ table <-
     "BMI, kg/m2"=c(tab.mean(df$body_mass_index_bmi_f21001_0_0, df$cluster, all = TRUE, p.value = TRUE)),
     "BMI cat"=c(tab.mcountpct(df$bmi_cat, df$cluster, first.cat=TRUE, all = TRUE, p.value = TRUE)),
     "Waist circumference, cm"=c(tab.mean(df$waist_circumference_f48_0_0, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol g/day"= c(tab.median(df$alcohol_g_day, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, CAT"= c(tab.mcountpct(df$alcohol_cat, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, high"= c(tab.countpct(df$alcohol.high, df$cluster, all = TRUE, p.value = TRUE)),
     "Alcohol, high2"= c(tab.countpct(df$alcohol.high2, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff"=c(tab.median(df$pdff, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff NA"=c(tab.countpct(is.na(df$pdff), df$cluster, all = TRUE, p.value = TRUE)),
@@ -1081,6 +1107,9 @@ table.globalp <-
     "BMI, kg/m2"=summary(aov(df$body_mass_index_bmi_f21001_0_0 ~ df$cluster))[[1]][[1,5]],
     "BMI cat"=chisq.test(df$bmi_cat, df$cluster)$p.value,
     "Waist circumference, cm"=summary(aov(df$waist_circumference_f48_0_0 ~ df$cluster))[[1]][[1,5]],
+    "Alcohol g/d"=kruskal.test(df$alcohol_g_day, df$cluster)$p.value,
+    "Alcohol CAT"= chisq.test(df$alcohol_cat, df$cluster)$p.value,
+    "Alcohol, high"= chisq.test(df$alcohol.high, df$cluster)$p.value,
     "Alcohol, high2"= chisq.test(df$alcohol.high2, df$cluster)$p.value,
     "pdff"=summary(aov(df$pdff ~ df$cluster))[[1]][[1,5]],
     "pdff NA"=chisq.test(is.na(df$pdff), df$cluster)$p.value,
@@ -1129,6 +1158,9 @@ table3 <-
     "BMI, kg/m2"=c(tab.mean(df$body_mass_index_bmi_f21001_0_0, df$cluster, all = TRUE, p.value = TRUE)),
     "BMI cat"=c(tab.mcountpct(df$bmi_cat, df$cluster, first.cat=TRUE, all = TRUE, p.value = TRUE)),
     "Waist circumference, cm"=c(tab.mean(df$waist_circumference_f48_0_0, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol g/day"= c(tab.median(df$alcohol_g_day, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, CAT"= c(tab.mcountpct(df$alcohol_cat, df$cluster, all = TRUE, p.value = TRUE)),
+    "Alcohol, high"= c(tab.countpct(df$alcohol.high, df$cluster, all = TRUE, p.value = TRUE)),
     "Alcohol, high2"= c(tab.countpct(df$alcohol.high2, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff"=c(tab.median(df$pdff, df$cluster, all = TRUE, p.value = TRUE)),
     "pdff NA"=c(tab.countpct(is.na(df$pdff), df$cluster, all = TRUE, p.value = TRUE)),
@@ -1172,6 +1204,9 @@ table.p <-
     "BMI, kg/m2"=c(p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$body_mass_index_bmi_f21001_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
     "BMI cat"=c(p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=3], df$cluster[df$cluster!=3])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=2], df$cluster[df$cluster!=2])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$bmi_cat[df$cluster!=1], df$cluster[df$cluster!=1])$p.value, method = "bonferroni", n=3))),
     "Waist circumference, cm"=c(p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$waist_circumference_f48_0_0, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
+    "Alcohol g/day"= c(p(pairwise.wilcox.test(df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$alcohol_g_day, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
+    "Alcohol cat"=c(p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=3], df$cluster[df$cluster!=3])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=2], df$cluster[df$cluster!=2])$p.value, method = "bonferroni", n=3)), p(p.adjust(chisq.test(df$alcohol_cat[df$cluster!=1], df$cluster[df$cluster!=1])$p.value, method = "bonferroni", n=3))),
+    "Alcohol high"=c(p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[3,3])),
     "Alcohol high2"=c(p(chisq.post.hoc(table(df$cluster, df$alcohol.high), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high2), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, df$alcohol.high2), control = "bonferroni")[3,3])),
     "pdff"=c(p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[1,1]), p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[2,1]), p(pairwise.wilcox.test( df$pdff, df$cluster, p.adjust.method = "bonferroni")$p.value[2,2])),
     "pdff NA"=c(p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[1,3]), p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[2,3]), p(chisq.post.hoc(table(df$cluster, is.na(df$pdff)), control = "bonferroni")[3,3])),
@@ -1294,3 +1329,5 @@ ggcuminc(diab.cr.km)+ add_confidence_interval()+scale_ggsurvfit()+
   scale_color_manual(labels = c("CONTROL","CARDIOMETABOLIC", "LIVER-SPECIFIC"), name="", values = c("gray", "red", "cyan")) +
   scale_fill_manual(labels = c("CONTROL","CARDIOMETABOLIC", "LIVER-SPECIFIC"), name="", values = c("gray", "red", "cyan")) +
   theme(axis.text = element_text(size=13), axis.title = element_text(size=13))
+dev.off()
+
